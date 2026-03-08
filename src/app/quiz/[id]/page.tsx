@@ -3,6 +3,7 @@
 import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter, useParams } from 'next/navigation';
+import Link from 'next/link';
 import {
     ChevronLeft,
     CheckCircle2,
@@ -14,7 +15,8 @@ import {
     TrendingUp,
     BookOpen,
     Layers,
-    Target
+    Target,
+    AlertTriangle
 } from 'lucide-react';
 import questionsData from '@/data/questions.json';
 import { useUserStore } from '@/lib/store/userStore';
@@ -86,6 +88,7 @@ export default function QuizPage() {
     const [isFinished, setIsFinished] = useState(false);
     const [xpGained, setXpGained] = useState(0);
     const [showLevelUp, setShowLevelUp] = useState(false);
+    const [showExitConfirm, setShowExitConfirm] = useState(false);
 
     const currentQuestion = filteredQuestions[currentQuestionIndex];
     const totalQuestions = filteredQuestions.length;
@@ -117,6 +120,30 @@ export default function QuizPage() {
         }
     };
 
+    const getAiEvaluation = () => {
+        const percentage = Math.round((score / totalQuestions) * 100);
+        if (percentage >= 90) return {
+            title: "完璧な理解です！",
+            message: "AI分析の結果、このトピックの基礎は完全にマスターされています。この調子でより高度な章へ進みましょう。",
+            color: "text-emerald-600"
+        };
+        if (percentage >= 70) return {
+            title: "素晴らしい成果です！",
+            message: "全体的に高い理解度を示しています。間違えた箇所を復習することで、マスターレベルへ到達できます。",
+            color: "text-blue-600"
+        };
+        if (percentage >= 40) return {
+            title: "着実に成長しています",
+            message: "基本的なポイントは押さえられています。解説を読み込み、反復練習を行うことで精度を高めましょう。",
+            color: "text-amber-600"
+        };
+        return {
+            title: "伸び代があります！",
+            message: "基礎的な概念の再確認が必要です。AI解説を参考に、教科書の該当箇所を短時間で確認することをお勧めします。",
+            color: "text-slate-500"
+        };
+    };
+
     if (totalQuestions === 0) {
         return (
             <div className="min-h-screen bg-gray-50 text-slate-900 flex items-center justify-center p-6">
@@ -128,12 +155,12 @@ export default function QuizPage() {
                         <h2 className="text-2xl font-black">問題が見つかりません</h2>
                         <p className="text-slate-500 font-bold">他のカテゴリーや級を試してください。</p>
                     </div>
-                    <button
-                        onClick={() => router.push('/')}
-                        className="px-8 py-4 bg-slate-900 text-white rounded-[2rem] font-black text-sm"
+                    <Link
+                        href="/"
+                        className="inline-block px-8 py-4 bg-slate-900 text-white rounded-[2rem] font-black text-sm"
                     >
                         ダッシュボードに戻る
-                    </button>
+                    </Link>
                 </div>
             </div>
         )
@@ -162,7 +189,13 @@ export default function QuizPage() {
                         <div className="text-6xl font-black tracking-tighter tabular-nums text-slate-900">
                             {Math.round((score / totalQuestions) * 100)}<span className="text-2xl text-slate-300 ml-1">%</span>
                         </div>
-                        <div className="mt-8 pt-8 border-t border-slate-100 flex justify-around">
+
+                        <div className="mt-6 p-4 bg-slate-50 rounded-2xl text-left border border-slate-100">
+                            <p className={`text-[10px] font-black uppercase tracking-widest mb-1 ${getAiEvaluation().color}`}>{getAiEvaluation().title}</p>
+                            <p className="text-xs font-bold text-slate-600 leading-relaxed">{getAiEvaluation().message}</p>
+                        </div>
+
+                        <div className="mt-6 pt-6 border-t border-slate-100 flex justify-around">
                             <div className="text-center">
                                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">正解数</p>
                                 <p className="text-2xl font-black text-slate-900">{score} / {totalQuestions}</p>
@@ -174,13 +207,13 @@ export default function QuizPage() {
                         </div>
                     </div>
 
-                    <button
-                        onClick={() => router.push('/')}
+                    <Link
+                        href="/"
                         className="w-full py-5 bg-slate-900 text-white rounded-[2rem] font-black text-sm transition-all shadow-xl shadow-slate-200 flex items-center justify-center gap-3 hover:bg-slate-800 active:scale-95 group"
                     >
                         ダッシュボードに戻る
                         <ArrowRight size={18} className="transition-transform group-hover:translate-x-1" />
-                    </button>
+                    </Link>
                 </motion.div>
             </div>
         );
@@ -215,12 +248,54 @@ export default function QuizPage() {
                     </motion.div>
                 )}
             </AnimatePresence>
+
+            {/* Exit Confirmation Modal */}
+            <AnimatePresence>
+                {showExitConfirm && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-slate-900/40 backdrop-blur-sm"
+                        onClick={() => setShowExitConfirm(false)}
+                    >
+                        <motion.div
+                            initial={{ scale: 0.9, y: 20 }}
+                            animate={{ scale: 1, y: 0 }}
+                            className="bg-white p-8 rounded-[2.5rem] shadow-2xl text-center space-y-6 max-w-sm pointer-events-auto"
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            <div className="w-16 h-16 bg-rose-100 text-rose-500 rounded-full flex items-center justify-center mx-auto">
+                                <AlertTriangle size={32} />
+                            </div>
+                            <div className="space-y-2">
+                                <h3 className="text-xl font-black text-slate-900">中断しますか？</h3>
+                                <p className="text-slate-500 font-bold text-sm leading-relaxed">これまでの回答内容は保存されません。ダッシュボードに戻りますか？</p>
+                            </div>
+                            <div className="flex flex-col gap-3">
+                                <button
+                                    onClick={() => router.push('/')}
+                                    className="w-full py-4 bg-rose-500 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-rose-600 transition-colors"
+                                >
+                                    中断する
+                                </button>
+                                <button
+                                    onClick={() => setShowExitConfirm(false)}
+                                    className="w-full py-4 bg-slate-100 text-slate-600 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-slate-200 transition-colors"
+                                >
+                                    続ける
+                                </button>
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
             <div className="max-w-4xl w-full space-y-8 pb-32">
                 {/* Header */}
                 <div className="flex items-center justify-between bg-white px-6 py-4 rounded-3xl shadow-sm border border-slate-200">
                     <div className="flex items-center gap-4">
                         <button
-                            onClick={() => router.push('/')}
+                            onClick={() => setShowExitConfirm(true)}
                             className="p-2 hover:bg-gray-50 rounded-xl transition-colors text-slate-400 hover:text-slate-600"
                         >
                             <ChevronLeft size={24} />
