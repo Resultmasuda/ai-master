@@ -18,10 +18,10 @@ const INITIAL_PROFILE: UserProfile = {
     streak: 0,
     lastActiveDate: null,
     mastery: {
-        'journaling': 50,
-        'inventory': 30,
-        'fixed_assets': 20,
-        'tax': 10
+        'journaling': 0,
+        'inventory': 0,
+        'fixed_assets': 0,
+        'tax': 0
     }
 };
 
