@@ -1,0 +1,59 @@
+﻿
+> boki_ai_master@0.1.0 lint
+> eslint
+
+
+C:\Users\owner\.gemini\antigravity\scratch\certification_master\src\app\page.tsx
+  11:3  warning  'Trophy' is defined but never used                                                                               @typescript-eslint/no-unused-vars
+  41:6  warning  React Hook useEffect has a missing dependency: 'updateStreak'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\owner\.gemini\antigravity\scratch\certification_master\src\app\quiz\[id]\page.tsx
+   3:29  warning  'useEffect' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            @typescript-eslint/no-unused-vars
+  12:5   warning  'Sparkles' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             @typescript-eslint/no-unused-vars
+  17:5   warning  'Layers' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               @typescript-eslint/no-unused-vars
+  18:5   warning  'Target' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               @typescript-eslint/no-unused-vars
+  44:13  warning  'profile' is assigned a value but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     @typescript-eslint/no-unused-vars
+  44:37  warning  'activeProgress' is assigned a value but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              @typescript-eslint/no-unused-vars
+  44:60  warning  'isLoaded' is assigned a value but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    @typescript-eslint/no-unused-vars
+  86:56  error    Error: Cannot call impure function during render
+
+`Math.random` is an impure function. Calling an impure function can produce unstable results that update unpredictably when the component happens to re-render. (https://react.dev/reference/rules/components-and-hooks-must-be-pure#components-and-hooks-must-be-idempotent).
+
+C:\Users\owner\.gemini\antigravity\scratch\certification_master\src\app\quiz\[id]\page.tsx:86:56
+  84 |
+  85 |         // Shuffle questions
+> 86 |         const shuffled = [...baseQuestions].sort(() => Math.random() - 0.5);
+     |                                                        ^^^^^^^^^^^^^ Cannot call impure function
+  87 |
+  88 |         // Take first 10
+  89 |         const sessionQuestions = shuffled.slice(0, 10);  react-hooks/purity
+  99:49  warning  'originalIndex' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        @typescript-eslint/no-unused-vars
+
+C:\Users\owner\.gemini\antigravity\scratch\certification_master\src\app\study\[category]\flashcards\page.tsx
+  3:18  warning  'AnimatePresence' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\owner\.gemini\antigravity\scratch\certification_master\src\app\study\[category]\notes\page.tsx
+  4:21  warning  'BookOpen' is defined but never used      @typescript-eslint/no-unused-vars
+  4:44  warning  'CheckCircle2' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\owner\.gemini\antigravity\scratch\certification_master\src\lib\store\userStore.ts
+  96:17  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\owner\.gemini\antigravity\scratch\certification_master\src\lib\store\userStore.ts:96:17
+  94 |                 }
+  95 |
+> 96 |                 setProfile(parsed);
+     |                 ^^^^^^^^^^ Avoid calling setState() directly within an effect
+  97 |             } catch (e) {
+  98 |                 console.error('Failed to parse user profile', e);
+  99 |             }  react-hooks/set-state-in-effect
+
+笨・15 problems (2 errors, 13 warnings)
+
+
