@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
@@ -19,7 +19,7 @@ import {
     AlertTriangle
 } from 'lucide-react';
 import questionsData from '@/data/questions.json';
-import { useUserStore } from '@/lib/store/userStore';
+import { useUserStore, Subject } from '@/lib/store/userStore';
 
 interface Option {
     debit: string;
@@ -28,35 +28,57 @@ interface Option {
 
 interface Question {
     id: string;
-    grade: number;
+    grade?: string | number; // Boki uses number, FP uses string tags
     category: string;
     tag: string;
     question: string;
     options: Option[];
     answerIndex: number;
     explanation: string;
+    subject: Subject;
 }
 
 export default function QuizPage() {
     const router = useRouter();
     const params = useParams();
-    const { addXp } = useUserStore();
+    const { profile, activeSubject, activeProgress, addXp, isLoaded } = useUserStore();
 
-    // Determine category/grade from ID
+    // Dynamic Theme Mapping
+    const theme = {
+        BOKI: {
+            name: "Boki Master",
+            primary: "emerald",
+            primaryBg: "bg-emerald-500",
+            primaryText: "text-emerald-400",
+            primaryBorder: "border-emerald-500",
+            primaryLight: "bg-emerald-100",
+            primaryDark: "bg-emerald-600",
+            accent: "teal",
+            tag: "AI 簿記マスター"
+        },
+        FP: {
+            name: "FP Master",
+            primary: "amber",
+            primaryBg: "bg-amber-500",
+            primaryText: "text-amber-400",
+            primaryBorder: "border-amber-500",
+            primaryLight: "bg-amber-100",
+            primaryDark: "bg-amber-600",
+            accent: "orange",
+            tag: "AI FP認定トレーナー"
+        }
+    }[activeSubject];
+
+    // Determine category/grade from ID and Subject
     const filteredQuestions = useMemo(() => {
-        const id = params?.id as string;
-        let baseQuestions: Question[] = [];
+        const id = decodeURIComponent(params?.id as string);
+        let baseQuestions = (questionsData as Question[]).filter(q => q.subject === activeSubject);
 
-        if (id === 'all') {
-            baseQuestions = [...questionsData] as Question[];
-        } else if (id === '3') {
-            baseQuestions = (questionsData as Question[]).filter(q => q.grade === 3);
-        } else if (id === '2') {
-            baseQuestions = (questionsData as Question[]).filter(q => q.grade === 2);
-        } else {
-            baseQuestions = (questionsData as Question[]).filter(q =>
-                q.category.toLowerCase().includes(id.toLowerCase()) ||
-                q.tag.toLowerCase().includes(id.toLowerCase())
+        if (id !== 'all') {
+            baseQuestions = baseQuestions.filter(q =>
+                (q.grade?.toString() === id) ||
+                (q.category === id) ||
+                (q.tag === id)
             );
         }
 
@@ -78,9 +100,8 @@ export default function QuizPage() {
                 answerIndex: correctOptionIdx
             };
         });
-    }, [params?.id]);
+    }, [params?.id, activeSubject]);
 
-    // If no questions match, or data is empty
     const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
     const [selectedOption, setSelectedOption] = useState<number | null>(null);
     const [isAnswered, setIsAnswered] = useState(false);
@@ -103,7 +124,8 @@ export default function QuizPage() {
         setIsAnswered(true);
         if (selectedOption === currentQuestion.answerIndex) {
             setScore(prev => prev + 1);
-            const { leveledUp } = addXp(10, currentQuestion.category.toLowerCase());
+            // Updated addXp call: addXp(amount, tag)
+            const { leveledUp } = addXp(10, currentQuestion.tag);
             setXpGained(10);
             if (leveledUp) setShowLevelUp(true);
         }
@@ -124,8 +146,8 @@ export default function QuizPage() {
         const percentage = Math.round((score / totalQuestions) * 100);
         if (percentage >= 90) return {
             title: "完璧な理解です！",
-            message: "AI分析の結果、このトピックの基礎は完全にマスターされています。この調子でより高度な章へ進みましょう。",
-            color: "text-emerald-600"
+            message: `AI分析の結果、この${activeSubject === 'BOKI' ? '仕訳' : '分野'}の基礎は完全にマスターされています。この調子でより高度な章へ進みましょう。`,
+            color: `text-${theme.primary}-600`
         };
         if (percentage >= 70) return {
             title: "素晴らしい成果です！",
@@ -153,11 +175,11 @@ export default function QuizPage() {
                     </div>
                     <div className="space-y-2">
                         <h2 className="text-2xl font-black">問題が見つかりません</h2>
-                        <p className="text-slate-500 font-bold">他のカテゴリーや級を試してください。</p>
+                        <p className="text-slate-500 font-bold">このカテゴリーの問題はまだ準備中か、別の科目に含まれている可能性があります。</p>
                     </div>
                     <Link
                         href="/"
-                        className="inline-block px-8 py-4 bg-slate-900 text-white rounded-[2rem] font-black text-sm"
+                        className={`inline-block px-8 py-4 ${theme.primaryBg} text-white rounded-[2rem] font-black text-sm`}
                     >
                         ダッシュボードに戻る
                     </Link>
@@ -175,13 +197,13 @@ export default function QuizPage() {
                     className="max-w-md w-full text-center space-y-8"
                 >
                     <div className="relative inline-block">
-                        <div className="absolute inset-0 bg-emerald-500/10 blur-3xl rounded-full"></div>
-                        <CheckCircle2 size={80} className="text-emerald-500 relative z-10 mx-auto" strokeWidth={1.5} />
+                        <div className={`absolute inset-0 ${theme.primaryBg}/10 blur-3xl rounded-full`}></div>
+                        <CheckCircle2 size={80} className={`${theme.primaryText} relative z-10 mx-auto`} strokeWidth={1.5} />
                     </div>
 
                     <div className="space-y-2">
                         <h1 className="text-4xl font-black tracking-tighter text-slate-900 uppercase">お疲れ様でした！</h1>
-                        <p className="text-slate-500 font-bold uppercase tracking-[0.2em] text-[10px]">セッション完了</p>
+                        <p className="text-slate-500 font-bold uppercase tracking-[0.2em] text-[10px]">{activeSubject} セッション完了</p>
                     </div>
 
                     <div className="bg-white border border-slate-200 rounded-[2.5rem] p-8 shadow-xl">
@@ -202,7 +224,7 @@ export default function QuizPage() {
                             </div>
                             <div className="text-center">
                                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">獲得ポイント</p>
-                                <p className="text-2xl font-black text-emerald-600">+{score * 10}</p>
+                                <p className={`text-2xl font-black text-${theme.primary}-600`}>+{score * 10}</p>
                             </div>
                         </div>
                     </div>
@@ -220,7 +242,7 @@ export default function QuizPage() {
     }
 
     return (
-        <main className="min-h-screen bg-gray-50 text-slate-900 p-4 md:p-8 flex items-center justify-center">
+        <main className="min-h-screen bg-gray-50 text-slate-900 p-4 md:p-8 flex items-center justify-center font-sans">
             {/* Level Up Modal */}
             <AnimatePresence>
                 {showLevelUp && (
@@ -228,20 +250,20 @@ export default function QuizPage() {
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-emerald-500/10 backdrop-blur-md"
+                        className={`fixed inset-0 z-[100] flex items-center justify-center p-6 ${theme.primaryBg}/10 backdrop-blur-md`}
                         onClick={() => setShowLevelUp(false)}
                     >
                         <motion.div
                             initial={{ scale: 0.8, y: 20 }}
                             animate={{ scale: 1, y: 0 }}
-                            className="bg-white p-12 rounded-[3.5rem] shadow-2xl border-4 border-emerald-500 text-center space-y-6 max-w-sm pointer-events-auto"
+                            className={`bg-white p-12 rounded-[3.5rem] shadow-2xl border-4 ${theme.primaryBorder} text-center space-y-6 max-w-sm pointer-events-auto`}
                         >
-                            <div className="w-24 h-24 bg-emerald-500 text-white rounded-full flex items-center justify-center mx-auto animate-bounce shadow-xl shadow-emerald-500/20">
+                            <div className={`w-24 h-24 ${theme.primaryBg} text-white rounded-full flex items-center justify-center mx-auto animate-bounce shadow-xl shadow-${theme.primary}-500/20`}>
                                 <TrendingUp size={48} strokeWidth={3} />
                             </div>
                             <div className="space-y-1">
                                 <h3 className="text-4xl font-black text-slate-900 tracking-tighter">レベルアップ！</h3>
-                                <p className="text-emerald-600 font-black text-sm uppercase tracking-widest">AI習得レベルが上昇しました</p>
+                                <p className={`${theme.primaryText} font-black text-sm uppercase tracking-widest`}>AI習得レベルが上昇しました</p>
                             </div>
                             <button className="w-full py-4 bg-slate-900 text-white rounded-2xl font-black text-xs uppercase tracking-widest">トレーニングを続ける</button>
                         </motion.div>
@@ -290,6 +312,7 @@ export default function QuizPage() {
                     </motion.div>
                 )}
             </AnimatePresence>
+
             <div className="max-w-4xl w-full space-y-8 pb-32">
                 {/* Header */}
                 <div className="flex items-center justify-between bg-white px-6 py-4 rounded-3xl shadow-sm border border-slate-200">
@@ -302,17 +325,17 @@ export default function QuizPage() {
                         </button>
                         <div>
                             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">トレーニングセッション</p>
-                            <h1 className="text-sm font-black text-slate-800">仕訳トレーニング / Journaling</h1>
+                            <h1 className="text-sm font-black text-slate-800">{activeSubject} マスター AI</h1>
                         </div>
                     </div>
                     <div className="flex items-center gap-4">
                         <div className="text-right hidden sm:block">
                             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">問題</p>
-                            <p className="text-sm font-black text-emerald-600">{currentQuestionIndex + 1} / {totalQuestions}</p>
+                            <p className={`text-sm font-black ${theme.primaryText}`}>{currentQuestionIndex + 1} / {totalQuestions}</p>
                         </div>
                         <div className="w-24 h-2 bg-slate-100 rounded-full overflow-hidden">
                             <div
-                                className="h-full bg-emerald-500 rounded-full transition-all duration-500"
+                                className={`h-full ${theme.primaryBg} rounded-full transition-all duration-500`}
                                 style={{ width: `${((currentQuestionIndex + 1) / totalQuestions) * 100}%` }}
                             />
                         </div>
@@ -334,11 +357,21 @@ export default function QuizPage() {
                             </div>
                             <div className="space-y-6 relative z-10">
                                 <div className="flex items-center gap-2">
-                                    <span className="px-3 py-1 bg-emerald-100 text-emerald-700 text-[10px] font-black rounded-lg uppercase tracking-widest">
-                                        {currentQuestion.grade}級
-                                    </span>
+                                    {currentQuestion.grade && (
+                                        <span className={`px-3 py-1 ${theme.primaryLight} text-${theme.primary}-700 text-[10px] font-black rounded-lg uppercase tracking-widest`}>
+                                            {currentQuestion.grade}{activeSubject === 'BOKI' ? '級' : ''}
+                                        </span>
+                                    )}
                                     <span className="px-3 py-1 bg-indigo-50 text-indigo-700 text-[10px] font-black rounded-lg uppercase tracking-widest">
-                                        {currentQuestion.category}
+                                        {{
+                                            'life-planning': 'ライフプランニングと資金計画',
+                                            'risk-management': 'リスク管理',
+                                            'taxation': 'タックスプランニング',
+                                            'asset-management': '金融資産運用',
+                                            'real-estate': '不動産',
+                                            'inheritance': '相続・事業承継',
+                                            'journaling': '仕訳演習'
+                                        }[currentQuestion.category] || currentQuestion.category}
                                     </span>
                                 </div>
                                 <h2 className="text-2xl md:text-3xl font-black text-slate-900 leading-tight">
@@ -353,17 +386,17 @@ export default function QuizPage() {
                                 const isCorrect = index === currentQuestion.answerIndex;
                                 const isSelected = selectedOption === index;
 
-                                let style = "bg-white border-slate-100 text-slate-600 hover:border-emerald-200 hover:bg-emerald-50/50 hover:shadow-lg hover:shadow-emerald-500/5";
+                                let style = `bg-white border-slate-100 text-slate-600 hover:border-${theme.primary}-200 hover:bg-${theme.primary}-50/50 hover:shadow-lg hover:shadow-${theme.primary}-500/5`;
                                 if (isAnswered) {
                                     if (isCorrect) {
-                                        style = "bg-emerald-50 border-emerald-500 text-emerald-900 shadow-xl shadow-emerald-500/10";
+                                        style = `bg-${theme.primary}-50 border-${theme.primary}-500 text-${theme.primary}-900 shadow-xl shadow-${theme.primary}-500/10`;
                                     } else if (isSelected) {
                                         style = "bg-rose-50 border-rose-500 text-rose-900";
                                     } else {
                                         style = "bg-white border-slate-50 text-slate-300 pointer-events-none";
                                     }
                                 } else if (isSelected) {
-                                    style = "bg-emerald-50 border-emerald-500 text-emerald-900 ring-4 ring-emerald-500/10 shadow-xl shadow-emerald-500/5";
+                                    style = `bg-${theme.primary}-50 border-${theme.primary}-500 text-${theme.primary}-900 ring-4 ring-${theme.primary}-500/10 shadow-xl shadow-${theme.primary}-500/5`;
                                 }
 
                                 return (
@@ -373,23 +406,33 @@ export default function QuizPage() {
                                         onClick={() => handleSelect(index)}
                                         className={`group relative w-full text-left p-6 md:p-8 rounded-[2rem] border-2 transition-all duration-300 ${style}`}
                                     >
-                                        <div className="flex items-center justify-between">
+                                        <div className="flex items-center justify-between gap-6">
                                             <div className="flex-1">
-                                                <div className="grid grid-cols-2 gap-8 md:gap-12">
-                                                    <div>
-                                                        <p className={`text-[10px] font-black uppercase mb-1 tracking-widest ${isAnswered && isCorrect ? 'text-emerald-600' : 'text-slate-400'}`}>借方</p>
-                                                        <p className="font-black text-lg md:text-xl tracking-tight">{option.debit}</p>
+                                                {activeSubject === 'BOKI' ? (
+                                                    <div className="grid grid-cols-2 gap-8 md:gap-12">
+                                                        <div>
+                                                            <p className={`text-[10px] font-black uppercase mb-1 tracking-widest ${isAnswered && isCorrect ? `text-${theme.primary}-600` : 'text-slate-400'}`}>
+                                                                借方
+                                                            </p>
+                                                            <p className="font-black text-lg md:text-xl tracking-tight">{option.debit}</p>
+                                                        </div>
+                                                        <div>
+                                                            <p className={`text-[10px] font-black uppercase mb-1 tracking-widest ${isAnswered && isCorrect ? `text-${theme.primary}-600` : 'text-slate-400'}`}>
+                                                                貸方
+                                                            </p>
+                                                            <p className="font-black text-lg md:text-xl tracking-tight">{option.credit}</p>
+                                                        </div>
                                                     </div>
-                                                    <div>
-                                                        <p className={`text-[10px] font-black uppercase mb-1 tracking-widest ${isAnswered && isCorrect ? 'text-emerald-600' : 'text-slate-400'}`}>貸方</p>
-                                                        <p className="font-black text-lg md:text-xl tracking-tight">{option.credit}</p>
+                                                ) : (
+                                                    <div className="flex items-center">
+                                                        <p className="font-black text-lg md:text-xl tracking-tight leading-tight">{option.debit}</p>
                                                     </div>
-                                                </div>
+                                                )}
                                             </div>
-                                            <div className="ml-6 flex items-center justify-center">
+                                            <div className="shrink-0 flex items-center justify-center">
                                                 <div className={`w-10 h-10 rounded-2xl flex items-center justify-center border-2 transition-all ${isAnswered
-                                                    ? (isCorrect ? 'bg-emerald-500 border-emerald-500 text-white' : (isSelected ? 'bg-rose-500 border-rose-500 text-white' : 'bg-gray-50 border-gray-100'))
-                                                    : (isSelected ? 'bg-emerald-500 border-emerald-500 text-white' : 'bg-white border-slate-100 group-hover:border-emerald-300')
+                                                    ? (isCorrect ? `${theme.primaryBg} border-${theme.primary}-500 text-white` : (isSelected ? 'bg-rose-500 border-rose-500 text-white' : 'bg-gray-50 border-gray-100'))
+                                                    : (isSelected ? `${theme.primaryBg} border-${theme.primary}-500 text-white` : `bg-white border-slate-100 group-hover:border-${theme.primary}-300`)
                                                     }`}>
                                                     {isAnswered ? (
                                                         isCorrect ? <CheckCircle2 size={24} strokeWidth={2.5} /> : (isSelected ? <XCircle size={24} strokeWidth={2.5} /> : null)
@@ -417,19 +460,19 @@ export default function QuizPage() {
                                         animate={{ opacity: 1, x: 0 }}
                                         className="flex gap-4 items-start"
                                     >
-                                        <div className={`w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 ${xpGained > 0 ? 'bg-emerald-500/20' : 'bg-slate-100'}`}>
-                                            {xpGained > 0 ? <Zap size={20} className="text-emerald-600" /> : <Lightbulb size={20} className="text-slate-400" />}
+                                        <div className={`w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 ${xpGained > 0 ? `${theme.primaryBg}/20` : 'bg-slate-100'}`}>
+                                            {xpGained > 0 ? <Zap size={20} className={`${theme.primaryText}`} /> : <Lightbulb size={20} className="text-slate-400" />}
                                         </div>
                                         <div className="space-y-1 flex-1">
                                             <div className="flex justify-between items-center">
-                                                <p className={`text-[10px] font-black uppercase tracking-widest ${xpGained > 0 ? 'text-emerald-600' : 'text-slate-400'}`}>
+                                                <p className={`text-[10px] font-black uppercase tracking-widest ${xpGained > 0 ? `${theme.primaryText}` : 'text-slate-400'}`}>
                                                     {xpGained > 0 ? `正解！ +${xpGained} XP 獲得` : 'AI解説'}
                                                 </p>
                                                 {xpGained > 0 && (
                                                     <motion.span
                                                         initial={{ scale: 0 }}
                                                         animate={{ scale: 1 }}
-                                                        className="bg-emerald-500 text-white text-[9px] font-black px-2 py-0.5 rounded-full"
+                                                        className={`${theme.primaryBg} text-white text-[9px] font-black px-2 py-0.5 rounded-full`}
                                                     >
                                                         成長の火花
                                                     </motion.span>
@@ -442,8 +485,8 @@ export default function QuizPage() {
                                     </motion.div>
                                 ) : (
                                     <div className="hidden md:flex flex-col">
-                                        <p className="text-xl font-black text-slate-900">正しい仕訳を選択してください</p>
-                                        <p className="text-slate-400 font-bold text-sm">取引内容を慎重に確認してください。</p>
+                                        <p className="text-xl font-black text-slate-900">正しい解答を選択してください</p>
+                                        <p className="text-slate-400 font-bold text-sm">問題内容を慎重に確認してください。</p>
                                     </div>
                                 )
                                 }
@@ -461,7 +504,7 @@ export default function QuizPage() {
                             ) : (
                                 <button
                                     onClick={handleNext}
-                                    className="w-full md:w-64 py-5 bg-emerald-600 text-white rounded-[2rem] font-black text-sm uppercase tracking-widest transition-all shadow-xl shadow-emerald-900/10 hover:bg-emerald-500 active:scale-95 flex items-center justify-center gap-2 group"
+                                    className={`w-full md:w-64 py-5 ${theme.primaryDark} text-white rounded-[2rem] font-black text-sm uppercase tracking-widest transition-all shadow-xl shadow-${theme.primary}-900/10 hover:brightness-110 active:scale-95 flex items-center justify-center gap-2 group`}
                                 >
                                     {currentQuestionIndex < totalQuestions - 1 ? '次の問題へ' : '結果を見る'}
                                     <ArrowRight size={18} className="transition-transform group-hover:translate-x-1" />
