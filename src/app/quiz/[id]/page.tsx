@@ -38,7 +38,7 @@ interface Question {
 export default function QuizPage() {
     const router = useRouter();
     const params = useParams();
-    const { activeSubject, addXp, isLoaded, bookmarkedQuestions } = useUserStore();
+    const { profile, activeProgress, activeSubject, addXp, isLoaded, bookmarkedQuestions } = useUserStore();
 
     // Dynamic Theme Mapping
     const theme = {
@@ -65,40 +65,37 @@ export default function QuizPage() {
             tag: "AI FP認定トレーナー"
         }
     }[activeSubject];
-
-    const baseQuestions = useMemo(() => {
+    // Determine category/grade from ID and Subject
+    const filteredQuestions = useMemo(() => {
         const id = decodeURIComponent(params?.id as string);
-        let filtered = (questionsData as Question[]).filter(q => q.subject === activeSubject);
+        let base = (questionsData as Question[]).filter(q => q.subject === activeSubject);
 
         if (id !== 'all') {
-            filtered = filtered.filter(q =>
+            base = base.filter(q =>
                 (q.grade?.toString() === id) ||
                 (q.category === id) ||
                 (q.tag === id)
             );
         }
-        return filtered;
+        return base;
     }, [params?.id, activeSubject]);
 
     const [shuffledQuestions, setShuffledQuestions] = useState<Question[]>([]);
 
     useEffect(() => {
-        if (baseQuestions.length > 0) {
+        if (filteredQuestions.length > 0) {
             // Shuffle and take 10
-            const shuffled = [...baseQuestions].sort(() => Math.random() - 0.5).slice(0, 10);
+            const shuffled = [...filteredQuestions].sort(() => Math.random() - 0.5).slice(0, 10);
 
             // Shuffle options for each question
             const processed = shuffled.map(q => {
-                const optionsWithOriginalIndex = q.options.map((opt, idx) => ({ ...opt, originalIndex: idx }));
+                const optionsWithOriginalIndex = q.options.map((opt: Option, idx: number) => ({ ...opt, originalIndex: idx }));
                 const shuffledOptions = [...optionsWithOriginalIndex].sort(() => Math.random() - 0.5);
                 const correctOptionIdx = shuffledOptions.findIndex(opt => opt.originalIndex === q.answerIndex);
 
                 return {
                     ...q,
-                    options: shuffledOptions.map(({ originalIndex, ...opt }) => {
-                        const { ...rest } = opt;
-                        return rest;
-                    }),
+                    options: shuffledOptions.map(({ originalIndex, ...opt }) => opt),
                     answerIndex: correctOptionIdx
                 };
             });
@@ -108,7 +105,7 @@ export default function QuizPage() {
             setIsAnswered(false);
             setIsFinished(false);
         }
-    }, [baseQuestions]);
+    }, [filteredQuestions]);
 
     const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
     const [selectedOption, setSelectedOption] = useState<number | null>(null);

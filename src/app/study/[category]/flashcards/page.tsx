@@ -61,9 +61,6 @@ export default function RedSheetPage({ params }: { params: Promise<{ category: s
             primaryBg: "bg-amber-500",
             primaryText: "text-amber-600",
             gradient: "from-amber-500 to-orange-700",
-            blankColor: "bg-rose-500",
-            blankText: "text-rose-600",
-            blankBg: "bg-rose-50",
         }
     }[activeSubject];
 
